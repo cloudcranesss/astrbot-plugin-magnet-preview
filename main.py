@@ -27,30 +27,33 @@ class MagnetPreviewer(Star):
         self.whatslink_url = self.config.get("WHATSLINK_URL", "")
         logger.info(f"WHATSLINK_URL: {self.whatslink_url}")
 
-
-
     @filter.regex(r"magnet:\?xt=urn:btih:[a-zA-Z0-9]{40}.*")
     async def handle_magnet(self, event: AstrMessageEvent) -> AsyncGenerator[Any, Any]:
         messages = event.get_messages()
         command = str(messages[0])
         link = command.split("&")[0]
+
         result = await analysis(link, self.whatslink_url)
+        if not result:  # 关键修复：处理空响应
+            yield "解析磁力链接失败，请检查链接格式或重试"
+            return
+
         infos, screenshots = self._sort_infos(result)
         for msg in ForwardMessage(event, infos, screenshots).send_by_qq():
             yield msg
 
-
     def _sort_infos(self, info: dict) -> tuple[list[str], list[Any]]:
+        # 使用更安全的字段获取方式
         base_info = [
             f"🔍 解析结果：\r"
             f"📝 名称：{info.get('name', '未知')}\r"
-            f"📦 类型：{FILE_TYPE_MAP.get(info.get('type', 'unknown').lower(), '❓ 其他')}\r"
+            f"📦 类型：{FILE_TYPE_MAP.get(info.get('file_type', 'unknown').lower(), FILE_TYPE_MAP['unknown'])}\r"
             f"📏 大小：{self._format_file_size(info.get('size', 0))}\r"
             f"📚 包含文件：{info.get('count', 0)}个"
         ]
         screenshots_data = info.get('screenshots', [])
-        screenshots = [s["screenshot"] for s in screenshots_data[:5] if s]
-        return base_info, screenshots
+        screenshots = [s.get("screenshot") for s in screenshots_data[:5] if s]
+        return base_info, [img for img in screenshots if img]
 
     def _format_file_size(self, size_bytes: int) -> str:
         """格式化文件大小"""
