@@ -1,0 +1,8 @@
+{
+  "WHATSLINK_URL": {
+    "description": "whatslink.info 网址，目前大陆被屏蔽，需自行搭建代理",
+    "type": "string",
+    "hint": "必填项。自行搭建whatslink反向代理",
+    "default": ""
+  }
+}
