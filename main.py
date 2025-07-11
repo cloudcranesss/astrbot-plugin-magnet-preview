@@ -3,8 +3,8 @@ from astrbot.core import logger, AstrBotConfig
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Star, register
 from astrbot.core.star import Context
-from analysis import analysis
-from froward_message import ForwardMessage
+from .analysis import analysis
+from .froward_message import ForwardMessage
 
 FILE_TYPE_MAP = {
     'folder': '📁 文件夹',
