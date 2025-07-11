@@ -1,3 +1,4 @@
+import re
 from typing import Any, AsyncGenerator
 from astrbot.core import logger, AstrBotConfig
 from astrbot.api.event import AstrMessageEvent, filter
@@ -30,7 +31,8 @@ class MagnetPreviewer(Star):
     @filter.regex(r"magnet:\?xt=urn:btih:[a-zA-Z0-9]{40}.*")
     async def handle_magnet(self, event: AstrMessageEvent) -> AsyncGenerator[Any, Any]:
         messages = event.get_messages()
-        command = str(messages[0])
+        plain = str(messages[0])
+        command = re.findall(r"text='(.*?)'", plain)[0]
         link = command.split("&")[0]
 
         result = await analysis(link, self.whatslink_url)
