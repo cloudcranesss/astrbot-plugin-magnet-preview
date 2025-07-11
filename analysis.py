@@ -25,6 +25,10 @@ async def analysis(link: str, url: str):
             async with session.get(url, headers=headers, params=params) as response:
                 if response.status == 200:
                     data = await response.json()
+                    # 新增：验证API返回的数据结构
+                    if not _validate_api_response(data):
+                        logger.error(f"无效API响应: {data}")
+                        return None
                     logger.info(f"响应数据: {data}")
                     return data
                 logger.error(f"请求失败，状态码: {response.status}")
@@ -35,3 +39,8 @@ async def analysis(link: str, url: str):
 def _validate_magnet(magnet: str) -> bool:
     """验证磁力链接格式有效性"""
     return bool(_MAGNET_PATTERN.match(magnet))
+
+def _validate_api_response(data: dict) -> bool:
+    """验证API返回的数据结构是否有效"""
+    required_keys = {"type", "file_type", "name", "size", "count", "screenshots"}
+    return all(key in data for key in required_keys) and data.get("screenshots") is not None

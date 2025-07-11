@@ -36,8 +36,15 @@ class MagnetPreviewer(Star):
         link = command.split("&")[0]
 
         result = await analysis(link, self.whatslink_url)
+
+        if not result or result.get('error'):
+            error_msg = result.get('name', '解析磁力链接失败') if result else 'API无响应'
+            logger.error(f"API错误: {error_msg}")
+            yield event.plain_result(f"⚠️ 解析失败: {error_msg.split('contact')[0]}")
+            return
+
         if not result:  # 关键修复：处理空响应
-            yield "解析磁力链接失败，请检查链接格式或重试"
+            yield event.plain_result("解析磁力链接失败，请检查链接格式或重试")
             return
 
         infos, screenshots = self._sort_infos(result)
@@ -53,8 +60,12 @@ class MagnetPreviewer(Star):
             f"📏 大小：{self._format_file_size(info.get('size', 0))}\r"
             f"📚 包含文件：{info.get('count', 0)}个"
         ]
-        screenshots_data = info.get('screenshots', [])
-        screenshots = [s.get("screenshot") for s in screenshots_data[:5] if s]
+        screenshots_data = info.get('screenshots') or []  # 关键修复：None时转为空列表
+        screenshots = [
+            s.get("screenshot")
+            for s in screenshots_data[:5]
+            if s and isinstance(s, dict)  # 双重验证
+        ]
         return base_info, [img for img in screenshots if img]
 
     def _format_file_size(self, size_bytes: int) -> str:
