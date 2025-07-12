@@ -10,5 +10,29 @@
     "type": "int",
     "hint": "选填项，默认为1",
     "default": "1"
+  },
+  "REDIS_HOST": {
+    "description": "Redis数据库地址",
+    "type": "string",
+    "hint": "必填项",
+    "default": "127.0.0.1"
+  },
+  "REDIS_PORT": {
+    "description": "Redis数据库端口",
+    "type": "int",
+    "hint": "必填项",
+    "default": "6379"
+  },
+  "REDIS_DB": {
+    "description": "Redis数据库索引",
+    "type": "int",
+    "hint": "选填项，默认为0",
+    "default": "0"
+  },
+  "REDIS_PASSWORD": {
+    "description": "Redis数据库密码",
+    "type": "string",
+    "hint": "选填项",
+    "default": ""
   }
 }

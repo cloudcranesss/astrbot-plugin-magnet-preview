@@ -1,5 +1,7 @@
 import re
 from typing import Any, AsyncGenerator
+
+import redis
 from astrbot.core import logger, AstrBotConfig
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Star, register
@@ -26,16 +28,21 @@ class MagnetPreviewer(Star):
         logger.info(f"AstrBot Version: {config.version}")
         self.config = config
         self.whatslink_url = self.config.get("WHATSLINK_URL", "")
-
-        # 修复：确保 MAX_IMAGES 配置值转换为整数
         max_images = self.config.get("MAX_IMAGES", 1)
         try:
             self.max_screenshots = int(max_images)  # 强制转换为整数
         except (TypeError, ValueError):
             self.max_screenshots = 1  # 默认值
             logger.warning(f"无效的 MAX_IMAGES 配置: '{max_images}'，使用默认值 1")
-
         logger.info(f"MAX_IMAGES: {self.max_screenshots}")
+
+        self.redis = redis.Redis(host=self.config.get("REDIS_HOST", "127.0.0.1"),
+                                port=self.config.get("REDIS_PORT", 6379),
+                                db=self.config.get("REDIS_DB", 0),
+                                password=self.config.get("REDIS_PASSWORD", None))
+        self.redis.ping()
+        logger.info(f"REDIS: {self.redis.ping()}")
+        logger.info("Magnet Preview Initialize Finished")
 
     async def terminate(self):
         """可选择实现 terminate 函数，当插件被卸载/停用时会调用。"""
@@ -50,19 +57,23 @@ class MagnetPreviewer(Star):
         command = re.findall(r"text='(.*?)'", plain)[0]
         link = command.split("&")[0]
 
-        result = await analysis(link, self.whatslink_url)
+        # 在redis中检查磁力是否存在，如果存在则返回
+        if self.redis.exists(link):
+            result = await self.redis.get(link)
+        else:
+            result = await analysis(link, self.whatslink_url)
+            if not result or result.get('error'):
+                error_msg = result.get('name', '解析磁力链接失败') if result else 'API无响应'
+                logger.error(f"API错误: {error_msg}")
+                yield event.plain_result(f"⚠️ 解析失败: {error_msg.split('contact')[0]}")
+                return
 
-        if not result or result.get('error'):
-            error_msg = result.get('name', '解析磁力链接失败') if result else 'API无响应'
-            logger.error(f"API错误: {error_msg}")
-            yield event.plain_result(f"⚠️ 解析失败: {error_msg.split('contact')[0]}")
-            return
-
-        if not result:  # 关键修复：处理空响应
-            yield event.plain_result("解析磁力链接失败，请检查链接格式或重试")
-            return
+            if not result:  # 关键修复：处理空响应
+                yield event.plain_result("解析磁力链接失败，请检查链接格式或重试")
+                return
 
         infos, screenshots = self._sort_infos(result)
+        await self.redis.set(link, result)
         for msg in ForwardMessage(event, infos, screenshots).send():
             yield msg
 
