@@ -39,7 +39,7 @@ class MagnetPreviewer(Star):
         self.redis = redis.Redis(host=self.config.get("REDIS_HOST", "127.0.0.1"),
                                 port=self.config.get("REDIS_PORT", 6379),
                                 db=self.config.get("REDIS_DB", 0),
-                                password=self.config.get("REDIS_PASSWORD", None))
+                                password=self.config.get("REDIS_PASSWORD", ""))
         self.redis.ping()
         logger.info(f"REDIS: {self.redis.ping()}")
         logger.info("Magnet Preview Initialize Finished")
