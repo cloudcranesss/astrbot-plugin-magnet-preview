@@ -1,7 +1,7 @@
 import re
+import json
 from typing import Any, AsyncGenerator
-
-import redis
+from redis import asyncio as redis
 from astrbot.core import logger, AstrBotConfig
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Star, register
@@ -40,13 +40,12 @@ class MagnetPreviewer(Star):
                                 port=self.config.get("REDIS_PORT", 6379),
                                 db=self.config.get("REDIS_DB", 0),
                                 password=self.config.get("REDIS_PASSWORD", ""))
-        self.redis.ping()
-        logger.info(f"REDIS: {self.redis.ping()}")
         logger.info("Magnet Preview Initialize Finished")
 
     async def terminate(self):
         """可选择实现 terminate 函数，当插件被卸载/停用时会调用。"""
         logger.info("Magnet Previewer terminate")
+        await self.redis.close()
         await super().terminate()
 
     @filter.event_message_type(filter.EventMessageType.ALL)
@@ -57,11 +56,16 @@ class MagnetPreviewer(Star):
         command = re.findall(r"text='(.*?)'", plain)[0]
         link = command.split("&")[0]
 
-        # 在redis中检查磁力是否存在，如果存在则返回
+        # 在redis中检查磁力是否存在
         if self.redis.exists(link):
-            result = await self.redis.get(link)
-            logger.info(f"磁力已存在: {link}")
-            logger.info(f"磁力结果: {result}")
+            result_str = await self.redis.get(link)
+            try:
+                # 从字符串加载JSON数据
+                result = json.loads(result_str)
+                logger.info(f"磁力已存在: {link}")
+            except json.JSONDecodeError:
+                logger.error(f"Redis数据解析失败: {result_str}")
+                result = await analysis(link, self.whatslink_url)
         else:
             result = await analysis(link, self.whatslink_url)
             if not result or result.get('error'):
@@ -74,11 +78,12 @@ class MagnetPreviewer(Star):
                 yield event.plain_result("解析磁力链接失败，请检查链接格式或重试")
                 return
 
+        # 将结果转换为JSON字符串再存储
+        await self.redis.set(link, json.dumps(result))
+
         infos, screenshots = self._sort_infos(result)
-        await self.redis.set(link, result)
         for msg in ForwardMessage(event, infos, screenshots).send():
             yield msg
-
 
 
     def _sort_infos(self, info: dict) -> tuple[list[str], list[Any]]:
