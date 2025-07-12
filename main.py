@@ -31,6 +31,7 @@ class MagnetPreviewer(Star):
     async def terminate(self):
         """可选择实现 terminate 函数，当插件被卸载/停用时会调用。"""
         logger.info("Magnet Previewer terminate")
+        await self.handle_magnet().aclose()
         await super().terminate()
 
     @filter.regex(r"magnet:\?xt=urn:btih:[a-zA-Z0-9]{40}.*")
@@ -55,6 +56,8 @@ class MagnetPreviewer(Star):
         infos, screenshots = self._sort_infos(result)
         for msg in ForwardMessage(event, infos, screenshots).send_by_qq():
             yield msg
+
+
 
     def _sort_infos(self, info: dict) -> tuple[list[str], list[Any]]:
         # 使用更安全的字段获取方式
