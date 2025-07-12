@@ -29,19 +29,21 @@ class ForwardMessage:
                         content=[comp.Plain(text_content)]
                     )
                 )
-            for screenshot in self.screenshots:
-                nodes.append(
-                    comp.Node(
-                        uin=uin,
-                        name=bot_name,
-                        content=[comp.Image.fromURL(screenshot)]
+            if self.screenshots:
+                for screenshot in self.screenshots:
+                    nodes.append(
+                        comp.Node(
+                            uin=uin,
+                            name=bot_name,
+                            content=[comp.Image.fromURL(screenshot)]
+                        )
                     )
-                )
         else:
             message = "\r".join(self.messages)
             yield self.event.plain_result(f"{message}")
-            for image in self.screenshots:
-                yield self.event.image_result(image)
+            if self.screenshots:
+                for screenshot in self.screenshots:
+                    yield self.event.image_result(screenshot)
         # 记录日志（复用预存变量）
         if self.screenshots:
             logger.info(f"{uin} forward screenshots: {self.screenshots}")
