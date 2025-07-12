@@ -9,7 +9,7 @@ class ForwardMessage:
         self.event = event
         self.platform = self.event.get_platform_name()
         logger.info(f"{self.platform} forward message: {messages}")
-        self.self_id = int(self.event.get_self_id())
+        self.self_id = self.event.get_self_id()
         self.messages = messages
         self.screenshots = screenshots
 
