@@ -1,9 +1,8 @@
 import random
 import re
 import aiohttp
-import math
 from functools import lru_cache
-from astrbot.core import logger
+from astrbot.api import logger
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 # 预编译正则表达式提高性能

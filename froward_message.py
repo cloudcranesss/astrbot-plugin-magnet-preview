@@ -1,7 +1,7 @@
 from typing import Optional, Any, Generator
 import astrbot.api.message_components as comp
-from astrbot.core.platform import AstrMessageEvent
-from astrbot.core import logger
+from astrbot.api.event import AstrMessageEvent
+from astrbot.api import logger
 
 
 class ForwardMessage:

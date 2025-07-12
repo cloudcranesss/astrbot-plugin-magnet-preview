@@ -6,10 +6,9 @@ from functools import lru_cache
 from typing import Any, AsyncGenerator
 import aiohttp
 from redis import asyncio as redis
-from astrbot.core import logger, AstrBotConfig
+from astrbot.api import logger, AstrBotConfig
 from astrbot.api.event import AstrMessageEvent, filter
-from astrbot.api.star import Star, register
-from astrbot.core.star import Context
+from astrbot.api.star import Star, register, Context
 from .analysis import analysis
 from .froward_message import ForwardMessage
 
@@ -72,7 +71,11 @@ class MagnetPreviewer(Star):
         plain = str(messages[0])
 
         try:
-            command = self._command_regex.findall(plain)[0]
+            matches = self._command_regex.findall(plain)
+            if not matches:
+                yield event.plain_result("⚠️ 无效的磁力链接格式")
+                return
+            command = matches[0]
             link = command.split("&")[0]
         except (IndexError, AttributeError):
             yield event.plain_result("⚠️ 无效的磁力链接格式")
