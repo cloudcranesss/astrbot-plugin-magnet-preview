@@ -12,7 +12,6 @@ _REFERER_OPTIONS = [
     "https://beta.magnet.pics/",
     "https://tmp.nulla.top/"
 ]
-_REFERER_CACHE = [random.choice(_REFERER_OPTIONS) for _ in range(10)]  # 预生成随机序列
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
@@ -26,7 +25,7 @@ async def analysis(link: str, url: str, session: aiohttp.ClientSession = None) -
     headers = {
         "Accept": "application/json",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Referer": _REFERER_CACHE[math.floor(random.random() * 10)],  # 从缓存中随机选取
+        "Referer": random.choice(_REFERER_OPTIONS)
     }
     params = {"url": link}
 

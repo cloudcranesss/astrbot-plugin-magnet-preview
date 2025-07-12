@@ -100,7 +100,7 @@ class MagnetPreviewer(Star):
             async with aiohttp.ClientSession() as session:
                 result = await analysis(link, self.whatslink_url, session)
 
-            if result and result.get('error'):
+            if result and result.get('error') is "":
                 try:
                     await self.redis_store.store(link, result)
                     logger.info("New cache stored", extra={"link": link})
@@ -116,17 +116,17 @@ class MagnetPreviewer(Star):
 
         # 生成结果消息
         infos, screenshots = self._sort_infos(result)
-        async for msg in ForwardMessage(event, infos, screenshots).send():
+        for msg in ForwardMessage(event, infos, screenshots).send():
             yield msg
 
     def _sort_infos(self, info: dict) -> tuple[list[str], list[str]]:
         """整理信息(优化版)"""
         file_type = info.get('file_type', 'unknown').lower()
         base_info = [
-            f"🔍 解析结果：",
-            f"📝 名称：{info.get('name', '未知')}",
-            f"📦 类型：{FILE_TYPE_MAP.get(file_type, FILE_TYPE_MAP['unknown'])}",
-            f"📏 大小：{self._format_file_size(info.get('size', 0))}",
+            f"🔍 解析结果：\r"
+            f"📝 名称：{info.get('name', '未知')}\r"
+            f"📦 类型：{FILE_TYPE_MAP.get(file_type, FILE_TYPE_MAP['unknown'])}\r"
+            f"📏 大小：{self._format_file_size(info.get('size', 0))}\r"
             f"📚 包含文件：{info.get('count', 0)}个"
         ]
 

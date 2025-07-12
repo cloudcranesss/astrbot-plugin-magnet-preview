@@ -19,7 +19,7 @@ class ForwardMessage:
         self.messages = messages
         self.screenshots = screenshots or []  # 确保总是列表
 
-    def send(self) -> Generator[Any, Any, None]:
+    def send(self) -> Generator[Any, None, None]:
         """发送转发消息(优化版)"""
         uin = self.self_id
         bot_name = "CloudCrane Bot"
