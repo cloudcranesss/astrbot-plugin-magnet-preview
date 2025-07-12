@@ -7,11 +7,13 @@ from astrbot.core import logger
 class ForwardMessage:
     def __init__(self, event: AstrMessageEvent, messages: list[str], screenshots: Optional[list] = None) -> None:
         self.event = event
+        self.platform = self.event.platform
+        logger.info(f"{self.platform} forward message: {messages}")
         self.self_id = int(self.event.get_self_id())
         self.messages = messages
         self.screenshots = screenshots
 
-    def send_by_qq(self) -> Generator[Any, Any, None]:
+    def send(self) -> Generator[Any, Any, None]:
         uin = self.self_id  # 预计算重复值
         bot_name = "CloudCrane Bot"
         nodes = []

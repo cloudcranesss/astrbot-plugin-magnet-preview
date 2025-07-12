@@ -54,7 +54,7 @@ class MagnetPreviewer(Star):
             return
 
         infos, screenshots = self._sort_infos(result)
-        for msg in ForwardMessage(event, infos, screenshots).send_by_qq():
+        for msg in ForwardMessage(event, infos, screenshots).send():
             yield msg
 
 
