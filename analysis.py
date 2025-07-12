@@ -49,4 +49,4 @@ def _validate_magnet(magnet: str) -> bool:
 def _validate_api_response(data: dict) -> bool:
     """验证API返回的数据结构是否有效"""
     required_keys = {"type", "file_type", "name", "size", "count", "screenshots"}
-    return all(key in data for key in required_keys) and data.get("screenshots") is not None
+    return all(key in data for key in required_keys)
