@@ -5,47 +5,58 @@ from astrbot.core import logger
 
 
 class ForwardMessage:
-    def __init__(self, event: AstrMessageEvent, messages: list[str], screenshots: Optional[list] = None) -> None:
+    def __init__(self, event: AstrMessageEvent, messages: list[str],
+                 screenshots: Optional[list] = None) -> None:
         self.event = event
-        self.platform = self.event.get_platform_name()
-        logger.info(f"{self.platform} forward message: {messages}")
-        self.self_id = self.event.get_self_id()
+        self.platform = event.get_platform_name()
+        logger.info("Forward message initialized",
+                    extra={
+                        "platform": self.platform,
+                        "message_count": len(messages),
+                        "screenshot_count": len(screenshots) if screenshots else 0
+                    })
+        self.self_id = event.get_self_id()
         self.messages = messages
-        self.screenshots = screenshots
+        self.screenshots = screenshots or []  # 确保总是列表
 
     def send(self) -> Generator[Any, Any, None]:
-        uin = self.self_id  # 预计算重复值
+        """发送转发消息(优化版)"""
+        uin = self.self_id
         bot_name = "CloudCrane Bot"
-        nodes = []
 
         if self.platform == "aiocqhttp":
-            for message in self.messages:
-                # 处理消息
-                text_content = str(message) if message is not None else ""
-                nodes.append(
-                    comp.Node(
-                        uin=uin,
-                        name=bot_name,
-                        content=[comp.Plain(text_content)]
-                    )
+            # 使用列表推导式优化节点生成
+            nodes = [
+                comp.Node(
+                    uin=uin,
+                    name=bot_name,
+                    content=[comp.Plain(str(msg) if msg is not None else "")]
                 )
-            if self.screenshots:
-                for screenshot in self.screenshots:
-                    nodes.append(
-                        comp.Node(
-                            uin=uin,
-                            name=bot_name,
-                            content=[comp.Image.fromURL(screenshot)]
-                        )
-                    )
-        else:
-            message = "\r".join(self.messages)
-            yield self.event.plain_result(f"{message}")
-            if self.screenshots:
-                for screenshot in self.screenshots:
-                    yield self.event.image_result(screenshot)
-        # 记录日志（复用预存变量）
-        if self.screenshots:
-            logger.info(f"{uin} forward screenshots: {self.screenshots}")
+                for msg in self.messages
+            ]
 
-        yield self.event.chain_result([comp.Nodes(nodes)])
+            # 添加截图节点
+            nodes.extend(
+                comp.Node(
+                    uin=uin,
+                    name=bot_name,
+                    content=[comp.Image.fromURL(screenshot)]
+                )
+                for screenshot in self.screenshots[:9]  # 限制最大数量
+                if screenshot  # 过滤空值
+            )
+
+            yield self.event.chain_result([comp.Nodes(nodes)])
+        else:
+            # 非aiocqhttp平台处理
+            if self.messages:
+                yield self.event.plain_result("\n".join(msg for msg in self.messages if msg))
+
+            for screenshot in self.screenshots[:9]:  # 限制最大数量
+                if screenshot:  # 过滤空值
+                    yield self.event.image_result(screenshot)
+
+        # 结构化日志记录
+        if self.screenshots:
+            logger.info("Screenshots forwarded",
+                        extra={"uin": uin, "count": len(self.screenshots)})
