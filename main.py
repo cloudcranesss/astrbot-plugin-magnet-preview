@@ -47,6 +47,7 @@ class MagnetPreviewer(Star):
             host=config.get("REDIS_HOST", "localhost"),
             port=int(config.get("REDIS_PORT", 6379)),
             db=int(config.get("REDIS_DB", 0)),
+            password=config.get("REDIS_PASSWORD", None),
             decode_responses=True,
             max_connections=10
         )
