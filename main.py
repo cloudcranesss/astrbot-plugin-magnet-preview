@@ -29,7 +29,9 @@ class MagnetPreviewer(Star):
         logger.info(f"WHATSLINK_URL: {self.whatslink_url}")
 
     async def terminate(self):
+        """可选择实现 terminate 函数，当插件被卸载/停用时会调用。"""
         logger.info("Magnet Previewer terminate")
+        await super().terminate()
 
     @filter.regex(r"magnet:\?xt=urn:btih:[a-zA-Z0-9]{40}.*")
     async def handle_magnet(self, event: AstrMessageEvent) -> AsyncGenerator[Any, Any]:
