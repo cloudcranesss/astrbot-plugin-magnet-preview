@@ -100,7 +100,7 @@ class MagnetPreviewer(Star):
             async with aiohttp.ClientSession() as session:
                 result = await analysis(link, self.whatslink_url, session)
 
-            if result:
+            if result and result.get('error'):
                 try:
                     await self.redis_store.store(link, result)
                     logger.info("New cache stored", extra={"link": link})
