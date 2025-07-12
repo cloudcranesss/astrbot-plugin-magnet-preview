@@ -41,6 +41,7 @@ class MagnetPreviewer(Star):
                                  db=self.config.get("REDIS_DB", 0),
                                  decode_responses=True,
                                  max_connections=10)
+        self.redis_store = MagnetResultStore(self.redis)
         logger.info("Magnet Preview Initialize Finished")
 
     async def terminate(self):
@@ -57,20 +58,17 @@ class MagnetPreviewer(Star):
         command = re.findall(r"text='(.*?)'", plain)[0]
         link = command.split("&")[0]
 
-        # 使用优化的Redis存储方案
-        redis_store = MagnetResultStore()  # 初始化时应传递实际连接参数
-
         # 使用缓存键获取数据（哈希优化）
-        cache_key = redis_store._get_key(link)
+        cache_key = self.redis_store._get_key(link)
 
         # 检查缓存是否存在
-        if redis_store.redis.exists(cache_key):
+        if self.redis_store.redis.exists(cache_key):
             try:
                 # 直接从Redis获取结果（避免额外的JSON解析）
-                result = redis_store.get(link)
+                result = self.redis_store.get(link)
                 logger.info(f"磁力链接缓存命中: {link}")
                 # 更新TTL保持缓存活跃
-                redis_store.redis.expire(cache_key, 86400)
+                self.redis_store.redis.expire(cache_key, 86400)
             except Exception as e:
                 logger.error(f"Redis缓存读取失败: {e}")
                 result = None
@@ -82,7 +80,7 @@ class MagnetPreviewer(Star):
             try:
                 result = await analysis(link, self.whatslink_url)
                 # 缓存解析结果
-                redis_store.store(link, result)
+                self.redis_store.store(link, result)
                 logger.info(f"新增磁力链接缓存: {link}")
             except Exception as e:
                 logger.error(f"磁力解析失败: {link} | 错误: {str(e)}")
@@ -137,6 +135,10 @@ class MagnetPreviewer(Star):
     # 替换图片中的域名
     def replace_image_url(self, image_url: str) -> str:
         return image_url.replace("https://whatslink.info", self.whatslink_url)
+
+class MagnetResultStore:
+    def __init__(self, redis=None):
+            self.redis = redis
 
     def _get_key(self, magnet_link):
         """使用SHA256哈希作为键，避免长键浪费内存"""
