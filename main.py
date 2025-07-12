@@ -60,6 +60,8 @@ class MagnetPreviewer(Star):
         # 在redis中检查磁力是否存在，如果存在则返回
         if self.redis.exists(link):
             result = await self.redis.get(link)
+            logger.info(f"磁力已存在: {link}")
+            logger.info(f"磁力结果: {result}")
         else:
             result = await analysis(link, self.whatslink_url)
             if not result or result.get('error'):
