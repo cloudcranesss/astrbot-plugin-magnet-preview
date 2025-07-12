@@ -69,13 +69,23 @@ class MagnetPreviewer(Star):
             f"📏 大小：{self._format_file_size(info.get('size', 0))}\r"
             f"📚 包含文件：{info.get('count', 0)}个"
         ]
-        screenshots_data = info.get('screenshots') or []  # 关键修复：None时转为空列表
-        screenshots = [
-            self.replace_image_url(s.get("screenshot"))
-            for s in screenshots_data[:self.max_screenshots]
-            if s and isinstance(s, dict)  # 双重验证
-        ]
-        return base_info, [img for img in screenshots if img]
+        # Handle screenshots
+        screenshots_data = info.get('screenshots')
+        if screenshots_data is None:
+            screenshots_data = []
+        elif not isinstance(screenshots_data, list):
+            screenshots_data = []
+
+        # Now take up to self.max_screenshots
+        screenshots = []
+        for s in screenshots_data[:self.max_screenshots]:
+            # Only process if s is a non-null dictionary
+            if isinstance(s, dict):
+                url = s.get('screenshot')
+                if url:  # if url is not empty string and not None
+                    screenshots.append(url)
+
+        return base_info, screenshots
 
     def _format_file_size(self, size_bytes: int) -> str:
         """格式化文件大小"""
