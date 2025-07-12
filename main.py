@@ -62,13 +62,15 @@ class MagnetPreviewer(Star):
         cache_key = self.redis_store._get_key(link)
 
         # 检查缓存是否存在
-        if self.redis_store.redis.exists(cache_key):
+        if await self.redis_store.exists(link):
             try:
-                # 直接从Redis获取结果（避免额外的JSON解析）
-                result = self.redis_store.get(link)
+                result = await self.redis_store.get(link)  # 关键修复：添加await
                 logger.info(f"磁力链接缓存命中: {link}")
-                # 更新TTL保持缓存活跃
-                self.redis_store.redis.expire(cache_key, 86400)
+                # 类型安全检查
+                if not isinstance(result, dict):
+                    raise TypeError(f"无效的缓存数据类型: {type(result)}")
+                # 更新TTL
+                await self.redis_store.redis.expire(cache_key, 86400)
             except Exception as e:
                 logger.error(f"Redis缓存读取失败: {e}")
                 result = None
@@ -80,7 +82,7 @@ class MagnetPreviewer(Star):
             try:
                 result = await analysis(link, self.whatslink_url)
                 # 缓存解析结果
-                self.redis_store.store(link, result)
+                await self.redis_store.store(link, result)
                 logger.info(f"新增磁力链接缓存: {link}")
             except Exception as e:
                 logger.error(f"磁力解析失败: {link} | 错误: {str(e)}")
@@ -138,31 +140,22 @@ class MagnetPreviewer(Star):
 
 class MagnetResultStore:
     def __init__(self, redis=None):
-            self.redis = redis
+        self.redis = redis
 
     def _get_key(self, magnet_link):
-        """使用SHA256哈希作为键，避免长键浪费内存"""
         return f"magnet:{hashlib.sha256(magnet_link.encode()).hexdigest()}"
 
-    def store(self, magnet_link, result):
-        """存储单条磁链结果（带过期时间）"""
+    async def exists(self, magnet_link):
+        """异步检查键是否存在"""
+        return await self.redis.exists(self._get_key(magnet_link))
+
+    async def store(self, magnet_link, result):
+        """存储结果（自动序列化）"""
         key = self._get_key(magnet_link)
-        # 原子性操作设置值和过期时间
-        self.redis.setex(key, 86400, result)  # 24小时自动过期
+        await self.redis.setex(key, 86400, json.dumps(result))
 
-    def bulk_store(self, items):
-        """批量存储磁链结果（管道优化）"""
-        pipe = self.redis.pipeline()
-        for magnet_link, result in items:
-            key = self._get_key(magnet_link)
-            pipe.setex(key, 86400, result)
-        pipe.execute()
-
-    def get(self, magnet_link):
-        """获取磁链结果"""
-        return self.redis.get(self._get_key(magnet_link))
-
-    def bulk_get(self, magnet_links):
-        """批量获取结果（使用mget减少网络开销）"""
-        keys = [self._get_key(link) for link in magnet_links]
-        return self.redis.mget(keys)
+    async def get(self, magnet_link):
+        """获取结果（自动反序列化）"""
+        key = self._get_key(magnet_link)
+        data = await self.redis.get(key)
+        return json.loads(data) if data else None
