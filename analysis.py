@@ -1,10 +1,14 @@
+import random
 import re
-
 import aiohttp
 from astrbot.core import logger
 
 # 预编译正则表达式提高性能
 _MAGNET_PATTERN = re.compile(r"^magnet:\?xt=urn:btih:[a-zA-Z0-9]{40}.*")
+_REFERER_OPTIONS = [
+    "https://beta.magnet.pics/",
+    "https://tmp.nulla.top/"
+]
 
 async def analysis(link: str, url: str):
     # 验证失败时直接返回避免无效请求
@@ -16,7 +20,8 @@ async def analysis(link: str, url: str):
     headers = {
         "Accept": "application/json",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
-        "Referer": "https://tmp.nulla.top/"
+        # 从_REFERER_OPTIONS随机选取一个
+        "Referer": random.choice(_REFERER_OPTIONS),
     }
     params = {"url": link}  # 修复：直接使用原始链接
 
