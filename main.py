@@ -28,6 +28,9 @@ class MagnetPreviewer(Star):
         self.whatslink_url = self.config.get("WHATSLINK_URL", "")
         logger.info(f"WHATSLINK_URL: {self.whatslink_url}")
 
+    async def terminate(self):
+        logger.info("Magnet Previewer terminate")
+
     @filter.regex(r"magnet:\?xt=urn:btih:[a-zA-Z0-9]{40}.*")
     async def handle_magnet(self, event: AstrMessageEvent) -> AsyncGenerator[Any, Any]:
         messages = event.get_messages()
@@ -62,7 +65,7 @@ class MagnetPreviewer(Star):
         ]
         screenshots_data = info.get('screenshots') or []  # 关键修复：None时转为空列表
         screenshots = [
-            s.get("screenshot")
+            self.replace_image_url(s.get("screenshot"))
             for s in screenshots_data[:5]
             if s and isinstance(s, dict)  # 双重验证
         ]
@@ -82,3 +85,7 @@ class MagnetPreviewer(Star):
             unit_index += 1
 
         return f"{size:.2f} {units[unit_index]}"
+
+    # 替换图片中的域名
+    def replace_image_url(self, image_url: str) -> str:
+        return image_url.replace("https://whatslink.info", self.whatslink_url)
