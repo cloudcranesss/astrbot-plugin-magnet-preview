@@ -26,8 +26,16 @@ class MagnetPreviewer(Star):
         logger.info(f"AstrBot Version: {config.version}")
         self.config = config
         self.whatslink_url = self.config.get("WHATSLINK_URL", "")
-        self.max_screenshots = self.config.get("MAX_IMAGES", 1)
-        logger.info(f"WHATSLINK_URL: {self.whatslink_url}")
+
+        # 修复：确保 MAX_IMAGES 配置值转换为整数
+        max_images = self.config.get("MAX_IMAGES", 1)
+        try:
+            self.max_screenshots = int(max_images)  # 强制转换为整数
+        except (TypeError, ValueError):
+            self.max_screenshots = 1  # 默认值
+            logger.warning(f"无效的 MAX_IMAGES 配置: '{max_images}'，使用默认值 1")
+
+        logger.info(f"MAX_IMAGES: {self.max_screenshots}")
 
     async def terminate(self):
         """可选择实现 terminate 函数，当插件被卸载/停用时会调用。"""
@@ -81,7 +89,7 @@ class MagnetPreviewer(Star):
         for s in screenshots_data[:self.max_screenshots]:
             # Only process if s is a non-null dictionary
             if isinstance(s, dict):
-                url = s.get('screenshot')
+                url = self.replace_image_url(s.get('url', ''))
                 if url:  # if url is not empty string and not None
                     screenshots.append(url)
 
