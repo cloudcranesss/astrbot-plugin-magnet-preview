@@ -4,5 +4,11 @@
     "type": "string",
     "hint": "必填项。自行搭建whatslink反向代理",
     "default": ""
+  },
+  "MAX_IMAGES": {
+    "description": "最大返回图片数，最多5张",
+    "type": "int",
+    "hint": "选填项，默认为1",
+    "default": "1"
   }
 }
