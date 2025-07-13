@@ -9,7 +9,8 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 _MAGNET_PATTERN = re.compile(r"^magnet:\?xt=urn:btih:[\w\d]{40}.*")
 _REFERER_OPTIONS = [
     "https://beta.magnet.pics/",
-    "https://tmp.nulla.top/"
+    "https://tmp.nulla.top/",
+    "https://pics.magnetq.com/"
 ]
 
 
@@ -21,10 +22,13 @@ async def analysis(link: str, url: str, session: aiohttp.ClientSession = None) -
         return None
 
     api_url = f"{url.rstrip('/')}/api/v1/link"
+    referer_url = random.choice(_REFERER_OPTIONS)
+    logger.info("API request sent", extra={"link": link})
+    logger.debug("API request headers", extra={"referer": referer_url})
     headers = {
         "Accept": "application/json",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
-        "Referer": random.choice(_REFERER_OPTIONS)
+        "Referer": referer_url
     }
     params = {"url": link}
 
@@ -32,7 +36,7 @@ async def analysis(link: str, url: str, session: aiohttp.ClientSession = None) -
         use_external_session = session is not None
         current_session = session if use_external_session else aiohttp.ClientSession()
 
-        async with current_session.get(api_url, headers=headers, params=params) as response:
+        async with current_session.get(api_url, headers=headers, params=params, ssl=False) as response:
             if response.status == 200:
                 data = await response.json()
                 if not _validate_api_response(data):
