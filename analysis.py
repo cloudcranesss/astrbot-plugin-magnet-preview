@@ -23,8 +23,8 @@ async def analysis(link: str, url: str, session: aiohttp.ClientSession = None) -
 
     api_url = f"{url.rstrip('/')}/api/v1/link"
     referer_url = random.choice(_REFERER_OPTIONS)
-    logger.info("API request sent", extra={"link": link})
-    logger.info("API request headers", extra={"referer": referer_url})
+    logger.info(f"API request sent {link}")
+    logger.info(f"API request headers {referer_url}")
     headers = {
         "Accept": "application/json",
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
