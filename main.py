@@ -144,7 +144,7 @@ class MagnetPreviewer(Star):
 
         screenshots = [
             self.replace_image_url(s["screenshot"])
-            for s in info.get('screenshots', [])[:self.max_screenshots]
+            for s in (info.get('screenshots') or [])[:self.max_screenshots]
             if isinstance(s, dict) and s.get("screenshot")
         ]
 
