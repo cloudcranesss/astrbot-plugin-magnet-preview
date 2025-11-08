@@ -54,7 +54,7 @@ class MagnetPreviewer(Star):
         self.redis_store = MagnetResultStore(self.redis)
 
         # 预编译正则表达式
-        self._magnet_regex = re.compile(r"magnet:\?xt=urn:btih:[\w\d]{40}.*")
+        self._magnet_regex = re.compile(r"magnet:\?xt=urn:btih:[a-zA-Z0-9]{40}.*")
         self._command_regex = re.compile(r"text='(.*?)'")
 
     async def terminate(self):
@@ -64,7 +64,7 @@ class MagnetPreviewer(Star):
         await super().terminate()
 
     @filter.event_message_type(filter.EventMessageType.ALL)
-    @filter.regex(r"magnet:\?xt=urn:btih:[\w\d]{40}.*")
+    @filter.regex(r"magnet:\?xt=urn:btih:[a-zA-Z0-9]{40}.*")
     async def handle_magnet(self, event: AstrMessageEvent) -> AsyncGenerator[Any, Any]:
         """处理磁力链接请求(优化版)"""
         messages = event.get_messages()
@@ -103,7 +103,7 @@ class MagnetPreviewer(Star):
             async with aiohttp.ClientSession() as session:
                 result = await analysis(link, self.whatslink_url, session)
 
-            if result and result.get('error') is "":
+            if result and result.get('error') == "":
                 try:
                     await self.redis_store.store(link, result)
                     logger.info("New cache stored", extra={"link": link})
@@ -112,9 +112,9 @@ class MagnetPreviewer(Star):
                                  extra={"error": str(e), "link": link})
 
         # 处理错误情况
-        if not result or result.get('error'):
-            error_msg = result.get('name', '未知错误') if result else 'API无响应'
-            yield event.plain_result(f"⚠️ 解析失败: {error_msg.split('contact')[0]}")
+        if not result or (isinstance(result, dict) and result.get('error')):
+            error_msg = result.get('name', '未知错误') if isinstance(result, dict) else 'API无响应'
+            yield event.plain_result(f"⚠️ 解析失败: {error_msg.split('contact')[0] if isinstance(error_msg, str) else '未知错误'}")
             return
 
         # 生成结果消息

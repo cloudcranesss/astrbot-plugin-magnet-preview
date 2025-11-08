@@ -6,7 +6,7 @@ from astrbot.api import logger
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 # 预编译正则表达式提高性能
-_MAGNET_PATTERN = re.compile(r"^magnet:\?xt=urn:btih:[\w\d]{40}.*")
+_MAGNET_PATTERN = re.compile(r"^magnet:\?xt=urn:btih:[a-zA-Z0-9]{40}.*")
 _REFERER_OPTIONS = [
     "https://beta.magnet.pics/",
     "https://tmp.nulla.top/",
