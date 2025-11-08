@@ -117,6 +117,11 @@ class MagnetPreviewer(Star):
             yield event.plain_result(f"⚠️ 解析失败: {error_msg.split('contact')[0] if isinstance(error_msg, str) else '未知错误'}")
             return
 
+        # 确保result是有效的字典
+        if not isinstance(result, dict):
+            yield event.plain_result("⚠️ 解析失败: API返回无效数据")
+            return
+
         # 生成结果消息
         infos, screenshots = self._sort_infos(result)
         for msg in ForwardMessage(event, infos, screenshots).send():
@@ -124,6 +129,10 @@ class MagnetPreviewer(Star):
 
     def _sort_infos(self, info: dict) -> tuple[list[str], list[str]]:
         """整理信息(优化版)"""
+        # 确保info是有效的字典
+        if not isinstance(info, dict):
+            return ["⚠️ 数据格式错误：无法解析磁力链接信息"], []
+        
         file_type = info.get('file_type', 'unknown').lower()
         base_info = [
             f"🔍 解析结果：\r"
