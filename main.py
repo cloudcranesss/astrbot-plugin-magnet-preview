@@ -36,6 +36,8 @@ class MagnetPreviewer(Star):
         self.image_domain_replacement = config.get("IMAGE_DOMAIN_REPLACEMENT", "").rstrip('/')
         # API请求地址配置 - 用于磁力链接解析的API请求
         self.whatslink_url = config.get("WHATSLINK_URL", "").rstrip('/')
+        # 合并转发配置 - 控制是否使用合并转发消息格式
+        self.use_forward_message = config.get("USE_FORWARD_MESSAGE", True)
 
         try:
             self.max_screenshots = min(int(config.get("MAX_IMAGES", 1)), 9)  # 限制最大值
@@ -135,8 +137,20 @@ class MagnetPreviewer(Star):
 
         # 生成结果消息
         infos, screenshots = self._sort_infos(result)
-        for msg in ForwardMessage(event, infos, screenshots).send():
-            yield msg
+        
+        # 根据配置决定是否使用合并转发
+        if self.use_forward_message:
+            logger.info("使用合并转发消息格式")
+            for msg in ForwardMessage(event, infos, screenshots).send():
+                yield msg
+        else:
+            logger.info("使用普通消息格式")
+            # 发送文本消息
+            if infos:
+                yield event.plain_result("\n".join(infos))
+            # 发送图片消息
+            for screenshot in screenshots:
+                yield event.image_result(screenshot)
 
     def _sort_infos(self, info: dict) -> tuple[list[str], list[str]]:
         """整理信息(优化版)"""

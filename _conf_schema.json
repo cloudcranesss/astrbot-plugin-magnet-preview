@@ -40,5 +40,11 @@
     "type": "string",
     "hint": "选填项",
     "default": ""
+  },
+  "USE_FORWARD_MESSAGE": {
+    "description": "是否使用合并转发消息格式",
+    "type": "bool",
+    "hint": "选填项。启用后使用合并转发格式发送消息，禁用则使用普通消息格式",
+    "default": "true"
   }
 }
