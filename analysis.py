@@ -10,16 +10,13 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 _MAGNET_PATTERN = re.compile(r"^magnet:\?xt=urn:btih:[a-zA-Z0-9]{40}.*")
 _REFERER_OPTIONS = [
     "https://whatslink.smartapi.com.cn/",
-    "https://whatslink.info/",
-    "https://www.google.com/",
-    "https://github.com/"
+    "https://whatslink.info/"
 ]
 
 # API端点列表，按优先级排序
 _API_ENDPOINTS = [
     "https://whatslink.smartapi.com.cn",
-    "https://whatslink.info", 
-    "https://api-whatslink-zone-3e6ueqpmjotd-1366542076.eo-edgefunctions1.com"
+    "https://whatslink.info"
 ]
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))

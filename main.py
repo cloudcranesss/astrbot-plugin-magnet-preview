@@ -86,6 +86,8 @@ class MagnetPreviewer(Star):
             yield event.plain_result("⚠️ 无效的磁力链接格式")
             return
 
+        yield event.plain_result("正在分析磁力链接，请稍后...")
+
         # 检查缓存
         cache_key = self.redis_store._get_key(link)
         result = None
@@ -158,6 +160,8 @@ class MagnetPreviewer(Star):
             for s in (info.get('screenshots') or [])[:self.max_screenshots]
             if isinstance(s, dict) and s.get("screenshot")
         ]
+        logger.info("Screenshots:", extra={"count": len(screenshots)})
+        logger.info(screenshots)
 
         return base_info, screenshots
 

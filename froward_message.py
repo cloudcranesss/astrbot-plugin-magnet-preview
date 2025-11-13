@@ -11,7 +11,7 @@ class ForwardMessage:
                  screenshots: Optional[list] = None) -> None:
         self.event = event
         self.platform = event.get_platform_name()
-        logger.info("Forward message initialized",
+        logger.info("转发消息初始化",
                     extra={
                         "platform": self.platform,
                         "message_count": len(messages),
@@ -21,55 +21,6 @@ class ForwardMessage:
         self.messages = messages
         self.screenshots = screenshots or []  # 确保总是列表
 
-    async def _download_image(self, url: str) -> Optional[bytes]:
-        """下载图片内容
-        
-        Args:
-            url: 图片URL
-            
-        Returns:
-            图片字节数据，如果下载失败则返回None
-        """
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(url, timeout=10, ssl=False) as response:
-                    if response.status == 200:
-                        return await response.read()
-                    else:
-                        logger.error(f"图片下载失败: HTTP {response.status}", extra={"url": url})
-                        return None
-        except Exception as e:
-            logger.error(f"图片下载异常: {str(e)}", extra={"url": url})
-            return None
-            
-    async def get_processed_images(self) -> List[Any]:
-        """处理图片列表，下载并返回可用于发送的图片对象
-        
-        Returns:
-            处理后的图片列表
-        """
-        processed_images = []
-        
-        for screenshot_url in self.screenshots[:9]:  # 限制最大数量
-            if not screenshot_url:
-                continue
-                
-            # 尝试下载图片
-            image_data = await self._download_image(screenshot_url)
-            if image_data:
-                try:
-                    # 使用bytes直接发送，而不是URL
-                    processed_images.append(image_data)
-                    logger.info("图片下载成功并已处理", extra={"url": screenshot_url})
-                except Exception as e:
-                    logger.error(f"图片处理失败: {str(e)}", extra={"url": screenshot_url})
-            else:
-                # 如果下载失败，仍然尝试使用原始URL作为后备方案
-                processed_images.append(screenshot_url)
-                logger.warning("使用原始图片URL作为后备", extra={"url": screenshot_url})
-                
-        return processed_images
-    
     def send(self) -> Generator[Any, None, None]:
         """发送转发消息(优化版)"""
         uin = self.self_id
@@ -86,7 +37,7 @@ class ForwardMessage:
                 for msg in self.messages
             ]
 
-            # 添加截图节点
+            # 添加截图节点 - 直接使用URL，不下载图片
             nodes.extend(
                 comp.Node(
                     uin=uin,
@@ -103,19 +54,12 @@ class ForwardMessage:
             if self.messages:
                 yield self.event.plain_result("\n".join(msg for msg in self.messages if msg))
 
-            # 创建一个异步任务来处理图片
-            import asyncio
-            loop = asyncio.get_event_loop()
-            processed_images = loop.run_until_complete(self.get_processed_images())
-            
-            for image in processed_images:
-                if isinstance(image, bytes):
-                    # 直接使用字节数据发送，避免使用可能过期的URL
-                    yield self.event.image_result(image)
-                elif image:  # 字符串URL作为后备
-                    yield self.event.image_result(image)
+            # 直接使用URL发送图片，不下载
+            for screenshot_url in self.screenshots[:9]:  # 限制最大数量
+                if screenshot_url:
+                    yield self.event.image_result(screenshot_url)
 
         # 结构化日志记录
         if self.screenshots:
-            logger.info("Screenshots forwarded",
+            logger.info("截图已转发",
                         extra={"uin": uin, "count": len(self.screenshots)})
