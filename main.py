@@ -32,7 +32,12 @@ class MagnetPreviewer(Star):
                     extra={"version": config.version})
 
         self.config = config
+        # 优先使用新的图片域名替换配置，保持向后兼容
+        self.image_domain_replacement = config.get("IMAGE_DOMAIN_REPLACEMENT", "").rstrip('/')
         self.whatslink_url = config.get("WHATSLINK_URL", "").rstrip('/')
+        
+        # 确定最终使用的图片域名替换地址
+        self.image_replacement_url = self.image_domain_replacement or self.whatslink_url
 
         try:
             self.max_screenshots = min(int(config.get("MAX_IMAGES", 1)), 9)  # 限制最大值
@@ -101,7 +106,8 @@ class MagnetPreviewer(Star):
         # 未命中缓存时解析链接
         if result is None:
             async with aiohttp.ClientSession() as session:
-                result = await analysis(link, self.whatslink_url, session)
+                # 使用新的图片域名替换配置进行API调用
+                result = await analysis(link, self.image_replacement_url, session)
 
             if result and result.get('error') == "":
                 try:
@@ -163,7 +169,15 @@ class MagnetPreviewer(Star):
 
     def replace_image_url(self, image_url: str) -> str:
         """替换图片URL域名(优化版)"""
-        return image_url.replace("https://whatslink.info", self.whatslink_url) if image_url else ""
+        if not image_url:
+            return ""
+        
+        # 优先使用新的图片域名替换配置
+        if self.image_replacement_url:
+            return image_url.replace("https://whatslink.info", self.image_replacement_url)
+        
+        # 保持向后兼容性
+        return image_url.replace("https://whatslink.info", self.whatslink_url) if self.whatslink_url else image_url
 
 
 class MagnetResultStore:

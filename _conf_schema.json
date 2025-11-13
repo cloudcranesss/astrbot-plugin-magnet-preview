@@ -1,8 +1,14 @@
 {
-  "WHATSLINK_URL": {
-    "description": "whatslink.info 网址，目前大陆被屏蔽，需自行搭建代理",
+  "IMAGE_DOMAIN_REPLACEMENT": {
+    "description": "图片域名替换地址，用于替换whatslink.info域名，优先使用此配置",
     "type": "string",
-    "hint": "必填项。自行搭建whatslink反向代理",
+    "hint": "选填项。用于图片域名替换的自定义地址",
+    "default": ""
+  },
+  "WHATSLINK_URL": {
+    "description": "whatslink.info 网址，目前大陆被屏蔽，需自行搭建代理（向后兼容）",
+    "type": "string",
+    "hint": "选填项。自行搭建whatslink反向代理，将被IMAGE_DOMAIN_REPLACEMENT替代",
     "default": ""
   },
   "MAX_IMAGES": {

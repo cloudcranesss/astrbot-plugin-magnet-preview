@@ -23,14 +23,21 @@ magnet:?xt=urn:btih:A736FE3DE765B2601A52C6ACC166F75A5EE9B0A6&dn=SSNI730
 
 ## ⚙️ 配置说明
 
-| 配置项           | 类型   | 必填 | 默认值    | 说明                                              |
-| ---------------- | ------ | ---- | --------- | ------------------------------------------------- |
-| `WHATSLINK_URL`  | string | 是   | -         | whatslink.info 代理地址（大陆需自行搭建反向代理） |
-| `MAX_IMAGES`     | int    | 否   | 1         | 最大返回图片数（1-5）                             |
-| `REDIS_HOST`     | string | 是   | 127.0.0.1 | Redis数据库地址                                   |
-| `REDIS_PORT`     | int    | 是   | 6379      | Redis数据库端口                                   |
-| `REDIS_DB`       | int    | 否   | 0         | Redis数据库索引                                   |
-| `REDIS_PASSWORD` | string | 否   | -         | Redis数据库密码                                   |
+| 配置项                     | 类型   | 必填 | 默认值    | 说明                                                                 |
+| -------------------------- | ------ | ---- | --------- | -------------------------------------------------------------------- |
+| `IMAGE_DOMAIN_REPLACEMENT` | string | 否   | -         | **推荐** 图片域名替换地址，用于替换whatslink.info域名，优先使用此配置 |
+| `WHATSLINK_URL`            | string | 否   | -         | **向后兼容** whatslink.info 代理地址（将被IMAGE_DOMAIN_REPLACEMENT替代） |
+| `MAX_IMAGES`               | int    | 否   | 1         | 最大返回图片数（1-5）                                                |
+| `REDIS_HOST`               | string | 是   | 127.0.0.1 | Redis数据库地址                                                      |
+| `REDIS_PORT`               | int    | 是   | 6379      | Redis数据库端口                                                      |
+| `REDIS_DB`                 | int    | 否   | 0         | Redis数据库索引                                                      |
+| `REDIS_PASSWORD`           | string | 否   | -         | Redis数据库密码                                                      |
+
+### 配置优先级说明
+
+1. **优先使用** `IMAGE_DOMAIN_REPLACEMENT` 配置
+2. **向后兼容** 如果未设置新配置，则使用 `WHATSLINK_URL`
+3. **推荐迁移** 建议新部署使用 `IMAGE_DOMAIN_REPLACEMENT`，现有部署可逐步迁移
 
 ## 📸 效果展示
 
