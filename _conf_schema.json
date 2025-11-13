@@ -8,8 +8,8 @@
   "WHATSLINK_URL": {
     "description": "whatslink.info 网址，目前大陆被屏蔽，需自行搭建代理（向后兼容）",
     "type": "string",
-    "hint": "选填项。自行搭建whatslink反向代理，将被IMAGE_DOMAIN_REPLACEMENT替代",
-    "default": ""
+    "hint": "选填项。自行搭建whatslink反向代理，默认为https://whatslink.info",
+    "default": "https://whatslink.info"
   },
   "MAX_IMAGES": {
     "description": "最大返回图片数，最多5张",
