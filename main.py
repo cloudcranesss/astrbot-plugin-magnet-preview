@@ -9,7 +9,7 @@ from redis import asyncio as redis
 from astrbot.api import logger, AstrBotConfig
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Star, register, Context
-from .analysis import analysis
+from .analysis import analysis, analysis_with_fallback
 from .froward_message import ForwardMessage
 
 FILE_TYPE_MAP = {
@@ -106,15 +106,20 @@ class MagnetPreviewer(Star):
         # 未命中缓存时解析链接
         if result is None:
             async with aiohttp.ClientSession() as session:
-                # 使用新的图片域名替换配置进行API调用
-                result = await analysis(link, self.image_replacement_url, session)
+                # 使用多端点重试机制进行API调用
+                result = await analysis_with_fallback(link, session)
+                
+                # 如果多端点重试失败，尝试使用配置的URL作为备用方案
+                if result is None and self.image_replacement_url:
+                    logger.info(f"多端点重试失败，尝试使用配置URL: {self.image_replacement_url}")
+                    result = await analysis(link, self.image_replacement_url, session)
 
             if result and result.get('error') == "":
                 try:
                     await self.redis_store.store(link, result)
-                    logger.info("New cache stored", extra={"link": link})
+                    logger.info("新缓存已存储", extra={"link": link})
                 except redis.RedisError as e:
-                    logger.error("Cache store failed",
+                    logger.error("缓存存储失败",
                                  extra={"error": str(e), "link": link})
 
         # 处理错误情况
