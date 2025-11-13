@@ -32,12 +32,10 @@ class MagnetPreviewer(Star):
                     extra={"version": config.version})
 
         self.config = config
-        # 优先使用新的图片域名替换配置，保持向后兼容
+        # 图片域名替换配置 - 用于替换返回的图片URL域名
         self.image_domain_replacement = config.get("IMAGE_DOMAIN_REPLACEMENT", "").rstrip('/')
+        # API请求地址配置 - 用于磁力链接解析的API请求
         self.whatslink_url = config.get("WHATSLINK_URL", "").rstrip('/')
-        
-        # 确定最终使用的图片域名替换地址
-        self.image_replacement_url = self.image_domain_replacement or self.whatslink_url
 
         try:
             self.max_screenshots = min(int(config.get("MAX_IMAGES", 1)), 9)  # 限制最大值
@@ -108,13 +106,13 @@ class MagnetPreviewer(Star):
         # 未命中缓存时解析链接
         if result is None:
             async with aiohttp.ClientSession() as session:
-                # 使用多端点重试机制进行API调用
-                result = await analysis_with_fallback(link, session)
+                # 使用配置的WHATSLINK_URL进行API调用
+                result = await analysis_with_fallback(link, session, self.whatslink_url)
                 
-                # 如果多端点重试失败，尝试使用配置的URL作为备用方案
-                if result is None and self.image_replacement_url:
-                    logger.info(f"多端点重试失败，尝试使用配置URL: {self.image_replacement_url}")
-                    result = await analysis(link, self.image_replacement_url, session)
+                # 如果配置URL解析失败，尝试使用默认的whatslink.info作为备用方案
+                if result is None:
+                    logger.info("配置URL解析失败，尝试使用默认URL")
+                    result = await analysis(link, "https://whatslink.info", session)
 
             if result and result.get('error') == "":
                 try:
@@ -181,11 +179,11 @@ class MagnetPreviewer(Star):
         if not image_url:
             return ""
         
-        # 优先使用新的图片域名替换配置
-        if self.image_replacement_url:
-            return image_url.replace("https://whatslink.info", self.image_replacement_url)
+        # 优先使用IMAGE_DOMAIN_REPLACEMENT进行图片域名替换
+        if self.image_domain_replacement:
+            return image_url.replace("https://whatslink.info", self.image_domain_replacement)
         
-        # 保持向后兼容性
+        # 保持向后兼容性，如果没有配置IMAGE_DOMAIN_REPLACEMENT，使用WHATSLINK_URL
         return image_url.replace("https://whatslink.info", self.whatslink_url) if self.whatslink_url else image_url
 
 

@@ -13,12 +13,6 @@ _REFERER_OPTIONS = [
     "https://whatslink.info/"
 ]
 
-# API端点列表，按优先级排序
-_API_ENDPOINTS = [
-    "https://whatslink.smartapi.com.cn",
-    "https://whatslink.info"
-]
-
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
 async def analysis(link: str, url: str, session: aiohttp.ClientSession = None) -> dict | None:
     """分析磁力链接，支持传入现有session"""
@@ -75,26 +69,27 @@ async def analysis(link: str, url: str, session: aiohttp.ClientSession = None) -
             await current_session.close()
     return None
 
-# 新增：多端点重试机制
-async def analysis_with_fallback(link: str, session: aiohttp.ClientSession = None) -> dict | None:
-    """使用多端点重试机制分析磁力链接"""
+# 新增：使用配置的URL进行解析
+async def analysis_with_fallback(link: str, session: aiohttp.ClientSession = None, config_url: str = None) -> dict | None:
+    """使用配置的WHATSLINK_URL分析磁力链接"""
     if not _validate_magnet(link):
         logger.error("无效的磁力链接格式", extra={"link": link})
         return None
 
-    logger.info(f"开始多端点重试解析: {link}")
+    logger.info(f"开始使用配置URL解析: {link}")
     
-    # 尝试所有可用的API端点
-    for endpoint in _API_ENDPOINTS:
-        logger.info(f"尝试端点: {endpoint}")
-        result = await analysis(link, endpoint, session)
+    # 使用配置的URL进行解析
+    if config_url:
+        logger.info(f"使用配置URL: {config_url}")
+        result = await analysis(link, config_url, session)
         if result is not None:
-            logger.info(f"端点 {endpoint} 解析成功")
+            logger.info("配置URL解析成功")
             return result
         else:
-            logger.warning(f"端点 {endpoint} 解析失败，尝试下一个端点")
+            logger.warning("配置URL解析失败")
+    else:
+        logger.warning("未配置有效的URL")
     
-    logger.error("所有API端点都不可用")
     return None
 
 @lru_cache(maxsize=1024)
