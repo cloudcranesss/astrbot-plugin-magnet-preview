@@ -1,11 +1,8 @@
 import hashlib
 import re
-import json
 import math
-from functools import lru_cache
 from typing import Any, AsyncGenerator
 import aiohttp
-from redis import asyncio as redis
 from astrbot.api import logger, AstrBotConfig
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Star, register, Context
@@ -46,34 +43,6 @@ class MagnetPreviewer(Star):
             logger.warning("Invalid MAX_IMAGES config, using default",
                            extra={"config_value": config.get("MAX_IMAGES")})
 
-        # Redis配置 - 控制是否使用Redis缓存
-        self.use_redis = config.get("USE_REDIS", True)
-        self.redis = None
-        self.redis_store = None
-        self.redis_pool = None
-        
-        # 只有当配置了使用Redis时才初始化Redis
-        if self.use_redis:
-            try:
-                # 使用连接池优化Redis连接
-                self.redis_pool = redis.ConnectionPool(
-                    host=config.get("REDIS_HOST", "localhost"),
-                    port=int(config.get("REDIS_PORT", 6379)),
-                    db=int(config.get("REDIS_DB", 0)),
-                    password=config.get("REDIS_PASSWORD", None),
-                    decode_responses=True,
-                    max_connections=10
-                )
-                self.redis = redis.Redis(connection_pool=self.redis_pool)
-                self.redis_store = MagnetResultStore(self.redis)
-                logger.info("Redis缓存已初始化")
-            except Exception as e:
-                logger.warning(f"Redis初始化失败，将不使用缓存: {e}")
-                self.use_redis = False
-                self.redis = None
-                self.redis_store = None
-                self.redis_pool = None
-
         # 预编译正则表达式
         self._magnet_regex = re.compile(r"magnet:\?xt=urn:btih:[a-zA-Z0-9]{40}.*")
         self._command_regex = re.compile(r"text='(.*?)'")
@@ -81,13 +50,6 @@ class MagnetPreviewer(Star):
     async def terminate(self):
         """清理资源"""
         logger.info("Magnet Previewer terminating")
-        # 只有在Redis初始化的情况下才关闭连接
-        if self.redis:
-            try:
-                await self.redis.close()
-                logger.info("Redis连接已关闭")
-            except Exception as e:
-                logger.warning(f"关闭Redis连接时出错: {e}")
         await super().terminate()
 
     @filter.event_message_type(filter.EventMessageType.ALL)
@@ -110,43 +72,16 @@ class MagnetPreviewer(Star):
 
         yield event.plain_result("正在分析磁力链接，请稍后...")
 
-        # 检查缓存
+        # 解析链接
         result = None
-
-        if self.use_redis and self.redis_store:
-            try:
-                cache_key = self.redis_store._get_key(link)
-                if await self.redis_store.exists(link):
-                    result = await self.redis_store.get(link)
-                    if isinstance(result, dict):
-                        await self.redis.expire(cache_key, 86400)
-                        logger.info("Cache hit", extra={"link": link})
-                    else:
-                        logger.warning("Invalid cache data",
-                                    extra={"link": link, "data_type": type(result)})
-                        result = None
-            except redis.RedisError as e:
-                logger.error("Redis error", extra={"error": str(e), "link": link})
-                result = None
-
-        # 未命中缓存时解析链接
-        if result is None:
-            async with aiohttp.ClientSession() as session:
-                # 使用配置的WHATSLINK_URL进行API调用
-                result = await analysis_with_fallback(link, session, self.whatslink_url)
-                
-                # 如果配置URL解析失败，尝试使用默认的whatslink.info作为备用方案
-                if result is None:
-                    logger.info("配置URL解析失败，尝试使用默认URL")
-                    result = await analysis(link, "https://whatslink.info", session)
-
-            if result and result.get('error') == "" and self.use_redis and self.redis_store:
-                try:
-                    await self.redis_store.store(link, result)
-                    logger.info("新缓存已存储", extra={"link": link})
-                except redis.RedisError as e:
-                    logger.error("缓存存储失败",
-                                 extra={"error": str(e), "link": link})
+        async with aiohttp.ClientSession() as session:
+            # 使用配置的WHATSLINK_URL进行API调用
+            result = await analysis_with_fallback(link, session, self.whatslink_url)
+            
+            # 如果配置URL解析失败，尝试使用默认的whatslink.info作为备用方案
+            if result is None:
+                logger.info("配置URL解析失败，尝试使用默认URL")
+                result = await analysis(link, "https://whatslink.info", session)
 
         # 处理错误情况
         if not result or (isinstance(result, dict) and result.get('error')):
@@ -255,30 +190,3 @@ class MagnetPreviewer(Star):
         return image_url.replace("https://whatslink.info", self.whatslink_url) if self.whatslink_url else image_url
 
 
-class MagnetResultStore:
-    """磁力结果存储(优化版)"""
-
-    def __init__(self, redis: redis.Redis):
-        self.redis = redis
-
-    @lru_cache(maxsize=1024)
-    def _get_key(self, magnet_link: str) -> str:
-        """获取缓存键(带缓存)"""
-        return f"magnet:{hashlib.sha256(magnet_link.encode()).hexdigest()}"
-
-    async def exists(self, magnet_link: str) -> bool:
-        """检查键是否存在"""
-        return await self.redis.exists(self._get_key(magnet_link))
-
-    async def store(self, magnet_link: str, result: dict) -> None:
-        """存储结果"""
-        await self.redis.setex(
-            self._get_key(magnet_link),
-            86400,
-            json.dumps(result, ensure_ascii=False)
-        )
-
-    async def get(self, magnet_link: str) -> dict | None:
-        """获取结果"""
-        data = await self.redis.get(self._get_key(magnet_link))
-        return json.loads(data) if data else None

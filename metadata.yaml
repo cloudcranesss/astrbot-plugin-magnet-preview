@@ -1,5 +1,5 @@
 name: astrbot-plugin-magnet-preview
-description: "磁链预览，使用redis作为缓存避免API过于频繁请求"
+description: "磁链预览，解析磁力链接并展示文件信息和截图"
 version: 1.0.1
 author: cloudcranesss
 repo: https://github.com/cloudcranesss/astrbot-plugin-magnet-preview

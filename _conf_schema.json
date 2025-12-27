@@ -17,36 +17,7 @@
     "hint": "选填项，默认为9",
     "default": "9"
   },
-  "USE_REDIS": {
-    "description": "是否使用Redis缓存",
-    "type": "bool",
-    "hint": "选填项，默认为true",
-    "default": "true"
-  },
-  "REDIS_HOST": {
-    "description": "Redis数据库地址",
-    "type": "string",
-    "hint": "选填项，默认localhost",
-    "default": "127.0.0.1"
-  },
-  "REDIS_PORT": {
-    "description": "Redis数据库端口",
-    "type": "int",
-    "hint": "选填项，默认为6379",
-    "default": "6379"
-  },
-  "REDIS_DB": {
-    "description": "Redis数据库索引",
-    "type": "int",
-    "hint": "选填项，默认为0",
-    "default": "0"
-  },
-  "REDIS_PASSWORD": {
-    "description": "Redis数据库密码",
-    "type": "string",
-    "hint": "选填项",
-    "default": ""
-  },
+
   "USE_FORWARD_MESSAGE": {
     "description": "是否使用合并转发消息格式",
     "type": "bool",
