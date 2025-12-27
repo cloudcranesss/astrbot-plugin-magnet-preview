@@ -12,10 +12,10 @@
     "default": "https://whatslink.info"
   },
   "MAX_IMAGES": {
-    "description": "最大返回图片数，最多5张",
+    "description": "最大返回图片数，最多9张",
     "type": "int",
-    "hint": "选填项，默认为1",
-    "default": "1"
+    "hint": "选填项，默认为9",
+    "default": "9"
   },
   "REDIS_HOST": {
     "description": "Redis数据库地址",

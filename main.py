@@ -9,8 +9,8 @@ from redis import asyncio as redis
 from astrbot.api import logger, AstrBotConfig
 from astrbot.api.event import AstrMessageEvent, filter
 from astrbot.api.star import Star, register, Context
+import astrbot.api.message_components as comp
 from .analysis import analysis, analysis_with_fallback
-from .froward_message import ForwardMessage
 
 FILE_TYPE_MAP = {
     'folder': '📁 文件夹',
@@ -40,9 +40,9 @@ class MagnetPreviewer(Star):
         self.use_forward_message = config.get("USE_FORWARD_MESSAGE", True)
 
         try:
-            self.max_screenshots = min(int(config.get("MAX_IMAGES", 1)), 9)  # 限制最大值
+            self.max_screenshots = min(int(config.get("MAX_IMAGES", 9)), 9)  # 限制最大值，默认显示所有可用图片
         except (TypeError, ValueError):
-            self.max_screenshots = 1
+            self.max_screenshots = 9
             logger.warning("Invalid MAX_IMAGES config, using default",
                            extra={"config_value": config.get("MAX_IMAGES")})
 
@@ -141,7 +141,7 @@ class MagnetPreviewer(Star):
         # 根据配置决定是否使用合并转发
         if self.use_forward_message:
             logger.info("使用合并转发消息格式")
-            for msg in ForwardMessage(event, infos, screenshots).send():
+            async for msg in self._send_forward_messages(event, infos, screenshots):
                 yield msg
         else:
             logger.info("使用普通消息格式")
@@ -151,6 +151,36 @@ class MagnetPreviewer(Star):
             # 发送图片消息
             for screenshot in screenshots:
                 yield event.image_result(screenshot)
+
+    async def _send_forward_messages(self, event: AstrMessageEvent, content: list[str], screenshots: list[str]) -> AsyncGenerator[Any, None]:
+        """使用AstrBot自带合并转发功能发送消息"""
+        uin = event.get_self_id()
+        bot_name = "CloudCrane Bot"
+        messages = []
+        
+        # 添加文本消息作为单独的Node
+        for message in content:
+            messages.append(
+                comp.Node(
+                    uin=uin,
+                    name=bot_name,
+                    content=[comp.Plain(str(message))]
+                )
+            )
+        
+        # 添加每张图片作为单独的Node
+        for screenshot in screenshots:
+            messages.append(
+                comp.Node(
+                    uin=uin,
+                    name=bot_name,
+                    content=[comp.Image.fromURL(screenshot)]
+                )
+            )
+        
+        merged_forward = comp.Nodes(messages)
+        logger.info(f"创建了1个合并转发，包含 {len(messages)} 条消息")
+        yield event.chain_result([merged_forward])
 
     def _sort_infos(self, info: dict) -> tuple[list[str], list[str]]:
         """整理信息(优化版)"""
