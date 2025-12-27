@@ -17,16 +17,22 @@
     "hint": "选填项，默认为9",
     "default": "9"
   },
+  "USE_REDIS": {
+    "description": "是否使用Redis缓存",
+    "type": "bool",
+    "hint": "选填项，默认为true",
+    "default": "true"
+  },
   "REDIS_HOST": {
     "description": "Redis数据库地址",
     "type": "string",
-    "hint": "必填项",
+    "hint": "选填项，默认localhost",
     "default": "127.0.0.1"
   },
   "REDIS_PORT": {
     "description": "Redis数据库端口",
     "type": "int",
-    "hint": "必填项",
+    "hint": "选填项，默认为6379",
     "default": "6379"
   },
   "REDIS_DB": {

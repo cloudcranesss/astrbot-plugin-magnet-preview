@@ -46,17 +46,33 @@ class MagnetPreviewer(Star):
             logger.warning("Invalid MAX_IMAGES config, using default",
                            extra={"config_value": config.get("MAX_IMAGES")})
 
-        # 使用连接池优化Redis连接
-        self.redis_pool = redis.ConnectionPool(
-            host=config.get("REDIS_HOST", "localhost"),
-            port=int(config.get("REDIS_PORT", 6379)),
-            db=int(config.get("REDIS_DB", 0)),
-            password=config.get("REDIS_PASSWORD", None),
-            decode_responses=True,
-            max_connections=10
-        )
-        self.redis = redis.Redis(connection_pool=self.redis_pool)
-        self.redis_store = MagnetResultStore(self.redis)
+        # Redis配置 - 控制是否使用Redis缓存
+        self.use_redis = config.get("USE_REDIS", True)
+        self.redis = None
+        self.redis_store = None
+        self.redis_pool = None
+        
+        # 只有当配置了使用Redis时才初始化Redis
+        if self.use_redis:
+            try:
+                # 使用连接池优化Redis连接
+                self.redis_pool = redis.ConnectionPool(
+                    host=config.get("REDIS_HOST", "localhost"),
+                    port=int(config.get("REDIS_PORT", 6379)),
+                    db=int(config.get("REDIS_DB", 0)),
+                    password=config.get("REDIS_PASSWORD", None),
+                    decode_responses=True,
+                    max_connections=10
+                )
+                self.redis = redis.Redis(connection_pool=self.redis_pool)
+                self.redis_store = MagnetResultStore(self.redis)
+                logger.info("Redis缓存已初始化")
+            except Exception as e:
+                logger.warning(f"Redis初始化失败，将不使用缓存: {e}")
+                self.use_redis = False
+                self.redis = None
+                self.redis_store = None
+                self.redis_pool = None
 
         # 预编译正则表达式
         self._magnet_regex = re.compile(r"magnet:\?xt=urn:btih:[a-zA-Z0-9]{40}.*")
@@ -65,7 +81,13 @@ class MagnetPreviewer(Star):
     async def terminate(self):
         """清理资源"""
         logger.info("Magnet Previewer terminating")
-        await self.redis.close()
+        # 只有在Redis初始化的情况下才关闭连接
+        if self.redis:
+            try:
+                await self.redis.close()
+                logger.info("Redis连接已关闭")
+            except Exception as e:
+                logger.warning(f"关闭Redis连接时出错: {e}")
         await super().terminate()
 
     @filter.event_message_type(filter.EventMessageType.ALL)
@@ -89,21 +111,23 @@ class MagnetPreviewer(Star):
         yield event.plain_result("正在分析磁力链接，请稍后...")
 
         # 检查缓存
-        cache_key = self.redis_store._get_key(link)
         result = None
 
-        if await self.redis_store.exists(link):
+        if self.use_redis and self.redis_store:
             try:
-                result = await self.redis_store.get(link)
-                if isinstance(result, dict):
-                    await self.redis.expire(cache_key, 86400)
-                    logger.info("Cache hit", extra={"link": link})
-                else:
-                    logger.warning("Invalid cache data",
-                                   extra={"link": link, "data_type": type(result)})
-                    result = None
+                cache_key = self.redis_store._get_key(link)
+                if await self.redis_store.exists(link):
+                    result = await self.redis_store.get(link)
+                    if isinstance(result, dict):
+                        await self.redis.expire(cache_key, 86400)
+                        logger.info("Cache hit", extra={"link": link})
+                    else:
+                        logger.warning("Invalid cache data",
+                                    extra={"link": link, "data_type": type(result)})
+                        result = None
             except redis.RedisError as e:
                 logger.error("Redis error", extra={"error": str(e), "link": link})
+                result = None
 
         # 未命中缓存时解析链接
         if result is None:
@@ -116,7 +140,7 @@ class MagnetPreviewer(Star):
                     logger.info("配置URL解析失败，尝试使用默认URL")
                     result = await analysis(link, "https://whatslink.info", session)
 
-            if result and result.get('error') == "":
+            if result and result.get('error') == "" and self.use_redis and self.redis_store:
                 try:
                     await self.redis_store.store(link, result)
                     logger.info("新缓存已存储", extra={"link": link})
